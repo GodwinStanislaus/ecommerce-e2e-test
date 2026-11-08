@@ -1,0 +1,27 @@
+{
+  "name": "ecommerce-bolt-e2e",
+  "version": "1.0.0",
+  "description": "End-to-end tests for eCommerce Bolt application",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:debug": "playwright test --debug",
+    "test:ui": "playwright test --ui",
+    "test:auth": "playwright test --project=chromium-anon",
+    "test:sales": "playwright test tests/sales",
+    "test:purchase": "playwright test tests/purchase",
+    "test:payments": "playwright test tests/payments",
+    "test:receipts": "playwright test tests/receipts",
+    "test:expenses": "playwright test tests/expenses",
+    "test:books": "playwright test tests/books",
+    "typecheck": "tsc --noEmit",
+    "lint:swallow": "! grep -rnE \"\\.catch\\(\\(\\) ?=> ?\\{ ?\\}\\)|waitForTimeout\" tests pages fixtures support",
+    "check": "npm run typecheck && npm run lint:swallow"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.48.2",
+    "@types/node": "^24.0.0",
+    "typescript": "^5.6.0"
+  }
+}
