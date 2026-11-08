@@ -34,12 +34,11 @@ test.describe('Expenses list', () => {
     await expect(expense.formTitle).toBeVisible();
   });
 
-  test('a bill posted via the API shows with correct amounts, mode and voucher', async ({ api, uid }) => {
-    const supplier = uid('SUP');
+  test('a bill posted via the API shows with correct amounts, mode and voucher', async ({ api, uid, sharedSupplier }) => {
+    const { name: supplier, id: supplierId } = sharedSupplier;
     const billNo = uid('INV');
-    const s = await createSupplier(api, supplier);
     const head = await headUnder(api, 'indirect');
-    const bill = await seedBill(api, { entryDate: isoDate(-11), supplierId: s.id, billNo, lines: [{ accountId: head.accountId, rate: 2500, gstRate: 18 }] });
+    const bill = await seedBill(api, { entryDate: isoDate(-11), supplierId, billNo, lines: [{ accountId: head.accountId, rate: 2500, gstRate: 18 }] });
 
     await expense.gotoList();
     await expense.showDay(isoDate(-11));
@@ -56,15 +55,14 @@ test.describe('Expenses list', () => {
     expect(cells[9]).toBe(bill.voucherNo);
   });
 
-  test('a paid bill is marked Paid and carries a round-off in its payable', async ({ api, uid }) => {
-    const supplier = uid('SUP');
+  test('a paid bill is marked Paid and carries a round-off in its payable', async ({ api, uid, sharedSupplier }) => {
+    const { name: supplier, id: supplierId } = sharedSupplier;
     const billNo = uid('INV');
-    const s = await createSupplier(api, supplier);
     const head = await headUnder(api, 'indirect');
     const cash = await accountByName(api, 'Cash in Hand');
     // 999.50 + 18% = 1179.41; printed 1179 => round-off -0.41
     await seedBill(api, { entryDate: isoDate(-12),
-      supplierId: s.id, billNo, paymentMode: 'CASH', paymentAccountId: cash.accountId,
+      supplierId, billNo, paymentMode: 'CASH', paymentAccountId: cash.accountId,
       billTotal: 1179, lines: [{ accountId: head.accountId, rate: 999.5, gstRate: 18 }],
     });
 
@@ -199,12 +197,11 @@ test.describe('Expenses list', () => {
     await expect(expense.page).toHaveURL(/\/expenses\/new$/);
   });
 
-  test('clicking a row opens the read-only bill', async ({ api, uid }) => {
-    const supplier = uid('SUP');
+  test('clicking a row opens the read-only bill', async ({ api, uid, sharedSupplier }) => {
+    const { name: supplier, id: supplierId } = sharedSupplier;
     const billNo = uid('INV');
-    const s = await createSupplier(api, supplier);
     const head = await headUnder(api, 'indirect');
-    const bill = await seedBill(api, { entryDate: isoDate(-17), supplierId: s.id, billNo, lines: [{ accountId: head.accountId, rate: 1000, gstRate: 12 }] });
+    const bill = await seedBill(api, { entryDate: isoDate(-17), supplierId, billNo, lines: [{ accountId: head.accountId, rate: 1000, gstRate: 12 }] });
 
     await expense.gotoList();
     await expense.showDay(isoDate(-17));

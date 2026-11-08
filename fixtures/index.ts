@@ -6,6 +6,7 @@ import { AppPage } from '../pages/app.page';
 import { ApiClient } from '../support/api-client';
 import { uid } from '../support/data';
 import { SESSION_FILE } from '../support/env';
+import { createSupplier } from '../tests/expenses/helpers';
 
 type Fixtures = {
   app: AppPage;
@@ -17,7 +18,26 @@ type Fixtures = {
   guard: void;
 };
 
-export const test = base.extend<Fixtures>({
+type WorkerFixtures = {
+  /**
+   * One GST-registered supplier per worker, reused by every test in it.
+   * Tests tell their records apart by bill number, not by supplier, so
+   * they do not each need a supplier of their own.
+   */
+  sharedSupplier: { id: string; name: string };
+};
+
+export const test = base.extend<Fixtures, WorkerFixtures>({
+  sharedSupplier: [
+    async ({}, use, workerInfo) => {
+      const api = await ApiClient.create();
+      const created = await createSupplier(api, uid(`E2E Shared Sup W${workerInfo.workerIndex}`));
+      await api.dispose();
+      await use(created);
+    },
+    { scope: 'worker' },
+  ],
+
   // Restore the app's sessionStorage user (storageState cannot carry it) so pages start signed in.
   context: async ({ context }, use) => {
     const { user } = JSON.parse(readFileSync(SESSION_FILE, 'utf8')) as { user: string };

@@ -1,7 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { isoDate, money } from '../../support/data';
 import { ExpensePage } from '../../pages/expense.page';
-import { createSupplier, GSTIN, headUnder } from './helpers';
+import { GSTIN, headUnder } from './helpers';
 
 interface SavedBill {
   id: string;
@@ -27,10 +27,9 @@ test.describe('Create supplier bill', () => {
   let head: string;
   let head2: string;
 
-  test.beforeEach(async ({ page, api, uid }) => {
+  test.beforeEach(async ({ page, api, sharedSupplier }) => {
     expense = new ExpensePage(page);
-    supplier = uid('SUP');
-    await createSupplier(api, supplier);
+    supplier = sharedSupplier.name;
     head = (await headUnder(api, 'indirect')).accountName;
     head2 = (await headUnder(api, 'direct')).accountName;
     await expense.gotoNew();

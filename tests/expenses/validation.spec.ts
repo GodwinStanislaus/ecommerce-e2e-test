@@ -8,10 +8,9 @@ test.describe('Supplier bill form: validation and behaviour', () => {
   let supplier: string;
   let head: string;
 
-  test.beforeEach(async ({ page, api, uid }) => {
+  test.beforeEach(async ({ page, api, sharedSupplier }) => {
     expense = new ExpensePage(page);
-    supplier = uid('SUP');
-    await createSupplier(api, supplier);
+    supplier = sharedSupplier.name;
     head = (await headUnder(api, 'indirect')).accountName;
     await expense.gotoNew();
   });
