@@ -1,5 +1,5 @@
 import { PurchaseInvoicePage } from '../../pages/purchase-invoice.page';
-import { parseMoney } from '../../support/data';
+import { isTamilNadu, parseMoney } from '../../support/data';
 import { createPurchaseInvoice, pickProduct } from '../_arrange';
 import { expect, test } from '../../fixtures';
 
@@ -10,13 +10,15 @@ test.describe('Purchase invoices', () => {
     pip = new PurchaseInvoicePage(page);
   });
 
-  test('list shows the payment-status tabs and table columns', async ({ page }) => {
+  test('list shows the payment-status tabs and table columns', async ({ page, api, uid }) => {
+    // The table is only rendered when there are rows, so arrange an unpaid invoice first
+    await createPurchaseInvoice(api, uid('PB'));
     await pip.gotoList();
     for (const tab of [pip.tabUnpaid, pip.tabPartial, pip.tabPaid, pip.tabAll]) {
       await expect(tab).toBeVisible();
     }
     for (const col of ['Invoice No', 'Supplier Bill No', 'Supplier', 'Net Payable', 'Due Date', 'Status', 'Actions']) {
-      await expect(page.getByRole('columnheader', { name: col, exact: true })).toBeVisible();
+      await expect(page.getByRole('columnheader', { name: new RegExp(`^\\W*${col}\\W*$`) })).toBeVisible();
     }
   });
 
@@ -91,7 +93,7 @@ test.describe('Purchase invoices', () => {
     const bill = uid('PB');
     const product = await pickProduct(api);
     const suppliers = await api.get('/supplier', { page: 1, limit: 50 });
-    const supplier = suppliers.suppliers.find((s: any) => s.gstin && s.stateCode === 'TN');
+    const supplier = suppliers.suppliers.find((s: any) => s.gstin && isTamilNadu(s.stateCode));
 
     await pip.gotoNew();
     await pip.pickSupplier(supplier.name);

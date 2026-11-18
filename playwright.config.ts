@@ -2,6 +2,8 @@ import { defineConfig, devices } from '@playwright/test';
 
 import { AUTH_FILE, env } from './support/env';
 
+const isLocal = env.name === 'local' && /^https?:\/\/(localhost|127\.0\.0\.1)/.test(env.baseUrl);
+
 const browsers = [
   { name: 'chromium', device: devices['Desktop Chrome'] },
   ...(env.allBrowsers
@@ -17,7 +19,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env['CI'],
   retries: process.env['CI'] ? 2 : 0,
-  workers: process.env['CI'] ? 1 : undefined,
+  // Deployed APIs throttle per IP (429), so run fewer workers against them than against a local server.
+  workers: process.env['CI'] ? 1 : isLocal ? undefined : 3,
   timeout: 45_000,
   expect: { timeout: 10_000 },
   reporter: [['list'], ['html', { open: 'never' }]],
@@ -50,11 +53,14 @@ export default defineConfig({
     })),
   ],
 
-  webServer: {
-    command: 'npm start',
-    url: env.baseUrl,
-    cwd: '../ecommerce-bolt',
-    reuseExistingServer: !process.env['CI'],
-    timeout: 180_000,
-  },
+  // Only the local environment starts the Angular dev server; other envs are already deployed.
+  webServer: isLocal
+    ? {
+        command: 'npm start',
+        url: env.baseUrl,
+        cwd: '../ecommerce-bolt',
+        reuseExistingServer: !process.env['CI'],
+        timeout: 180_000,
+      }
+    : undefined,
 });

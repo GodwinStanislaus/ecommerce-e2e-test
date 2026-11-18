@@ -1,7 +1,7 @@
 import { test, expect } from '../../fixtures';
 import { PurchaseOrderPage } from '../../pages/purchase-order.page';
 import type { ApiClient } from '../../support/api-client';
-import { isoDate } from '../../support/data';
+import { isoDate, isTamilNadu } from '../../support/data';
 
 interface Supplier {
   id: string;
@@ -18,7 +18,7 @@ interface Product {
 /** Existing master data from the shared dev DB: a Tamil Nadu supplier (intra-state) and an active product. */
 async function masterData(api: ApiClient): Promise<{ supplier: Supplier; product: Product }> {
   const suppliers = await api.get<{ suppliers: Supplier[] }>('/supplier', { page: 1, pageSize: 50 });
-  const supplier = suppliers.suppliers.find((s) => s.stateCode === 'TN' && /^[A-Za-z0-9 ]+$/.test(s.name));
+  const supplier = suppliers.suppliers.find((s) => isTamilNadu(s.stateCode) && /^[A-Za-z0-9 ]+$/.test(s.name));
   expect(supplier, 'a TN supplier with a plain alphanumeric name exists').toBeTruthy();
   const products = await api.get<{ products: Product[] }>('/product/list', { page: 1, pageSize: 20, isActive: true });
   const product = products.products.find((p) => p.purchaseRate > 0 && /^[A-Za-z0-9 ]+$/.test(p.name));

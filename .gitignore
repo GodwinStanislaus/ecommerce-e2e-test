@@ -8,3 +8,18 @@ dist/
 .DS_Store
 *.log
 graft/
+.env
+.env.*
+!.env.example
+
+# Local business data dumps and migration work (contain real customer/GST records)
+legacy-data/
+legacy-invoices/
+legacy-tools/
+/bank.html
+/cust.type.html
+/general.bank.html
+/prod.cat.html
+/products.csv
+/suppliers.csv
+/test.json

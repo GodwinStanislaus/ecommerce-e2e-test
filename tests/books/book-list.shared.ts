@@ -126,6 +126,7 @@ export function defineBookListTests(mode: Mode, makePage: (page: Page) => BookLi
       test.fail(true, 'Known bug: DELETE /cash-book|bank-book/:id does not exist in the API (404), so drafts cannot be deleted.');
       const marker = uid('BKD');
       const entry = await createEntry(api, mode, 'receipt', 14, marker, { approve: false });
+      test.skip(entry.status !== 'DRAFT', 'This environment approves entries on creation, so no draft can exist.');
       await book.open();
       await book.searchFor(marker);
       const row = book.row(marker);

@@ -25,7 +25,7 @@ export class PurchasePaymentPage extends AppPage {
     this.search = page.getByPlaceholder(/Search by payment number/);
     this.recordPaymentButton = page.getByRole('button', { name: 'Record Payment' }).first();
     this.emptyState = page.getByText('No payments found');
-    this.supplierInput = page.getByLabel('Search supplier');
+    this.supplierInput = page.getByRole('combobox', { name: 'Supplier', exact: true });
     this.paymentDate = page.getByLabel('Payment Date');
     this.amount = page.getByLabel(/^Amount/);
     this.method = page.getByLabel(/^Method/);
@@ -57,13 +57,15 @@ export class PurchasePaymentPage extends AppPage {
   }
 
   async searchFor(text: string): Promise<void> {
-    await this.afterResponse('GET', '/payment/list', () => this.search.fill(text));
+    // Wait for the response that carries the term: the list's first load may still be in flight.
+    const wanted = encodeURIComponent(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    await this.afterResponse('GET', new RegExp(`/payment/list\\?.*${wanted}`), () => this.search.fill(text));
   }
 
   /** Types in the supplier typeahead and picks the exact match. */
   async pickSupplier(name: string): Promise<void> {
     await this.supplierInput.fill(name);
-    const option = this.page.locator('.dropdown-item-hover').filter({ hasText: name });
+    const option = this.page.getByRole('option').filter({ hasText: name });
     await option.first().click();
     await expect(this.page.getByText('Outstanding Invoices & Bills')).toBeVisible();
   }

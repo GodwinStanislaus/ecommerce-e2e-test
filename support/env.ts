@@ -1,10 +1,19 @@
 import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-// Load .env from this project; shell variables always win.
-const envFile = resolve(import.meta.dirname, '..', '.env');
-if (existsSync(envFile)) {
-  process.loadEnvFile(envFile);
+const root = resolve(import.meta.dirname, '..');
+const name = process.env['E2E_ENV'] ?? 'local';
+
+// Precedence: shell > .env.<E2E_ENV> > .env (loadEnvFile never overrides what is already set).
+for (const file of [`.env.${name}`, '.env']) {
+  const path = resolve(root, file);
+  if (existsSync(path)) {
+    process.loadEnvFile(path);
+  }
+}
+
+if (/^prod/i.test(name) && process.env['E2E_ALLOW_PROD'] !== '1') {
+  throw new Error('Refusing to run against production: these tests create real data. Set E2E_ALLOW_PROD=1 only if you mean it.');
 }
 
 function required(name: string): string {
@@ -16,6 +25,8 @@ function required(name: string): string {
 }
 
 export const env = {
+  /** local | test | staging | ... — picks `.env.<name>` and a separate saved session. */
+  name,
   baseUrl: process.env['E2E_BASE_URL'] ?? 'http://localhost:4200',
   apiUrl: process.env['E2E_API_URL'] ?? 'http://localhost:3000',
   business: process.env['E2E_BUSINESS'] ?? '',
@@ -29,7 +40,8 @@ export const env = {
   },
 };
 
-export const AUTH_FILE = resolve(import.meta.dirname, '..', '.auth', 'user.json');
+// One saved session per environment so logins never leak between them.
+export const AUTH_FILE = resolve(root, '.auth', name, 'user.json');
 
 /** The app keeps the signed-in user in sessionStorage, which Playwright's storageState does not save. */
-export const SESSION_FILE = resolve(import.meta.dirname, '..', '.auth', 'session.json');
+export const SESSION_FILE = resolve(root, '.auth', name, 'session.json');

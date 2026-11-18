@@ -12,20 +12,26 @@ npx playwright test -g "name" --project=chromium
 npx playwright show-report
 ```
 
-- UI (`npm start` in `../ecommerce-bolt`, :4200) is started/reused by `playwright.config.ts`. The API must already run on :3000.
+- Pick the target with `E2E_ENV=local|test|staging|...` (default `local`), e.g. `E2E_ENV=test ./scripts/with-env.sh npx playwright test tests/books`. Shortcuts: `npm run test:local | test:test | test:staging`.
+- `local` starts/reuses the UI (`npm start` in `../ecommerce-bolt`, :4200); the API must already run on :3000. Other envs must already be deployed; no server is started.
+- `E2E_ENV` starting with `prod` is refused unless `E2E_ALLOW_PROD=1` (the tests create real data and never clean up).
 - Default is chromium only; `E2E_ALL_BROWSERS=1` adds firefox + webkit.
 
-## Auth
+## Environments and auth
 
-`tests/setup/auth.setup.ts` signs in once through the real login screen (handles the business picker) and saves cookies + localStorage to `.auth/user.json` (reused for 15 min; `E2E_FORCE_LOGIN=1` forces). Credentials come from `E2E_MOBILE`, `E2E_PASSWORD` (optional `E2E_BUSINESS`) in shell or gitignored `.env` (see `.env.example`); `scripts/with-env.sh` falls back to `../api-test/.env`. Never hard-code or print them. `auth/*.spec.ts` run logged out (`*-anon` projects); all other specs start logged in.
+Config per environment lives in gitignored `.env.<name>` (template: `.env.example`): `E2E_BASE_URL`, `E2E_API_URL`, `E2E_MOBILE`, `E2E_PASSWORD`, optional `E2E_BUSINESS`. Precedence: shell > `.env.<E2E_ENV>` > `.env`. `scripts/with-env.sh` additionally falls back to `../api-test/.env` for `local` only. Never hard-code or print credentials.
+
+`tests/setup/auth.setup.ts` signs in once through the real login screen (handles the business picker) and saves cookies to `.auth/<env>/user.json` plus the app's sessionStorage user to `.auth/<env>/session.json` (Playwright's storageState cannot carry sessionStorage; the `context` fixture in `fixtures/index.ts` restores it). Reused while the access token (15 min) has 12+ min left, so a full run never outlives it; `E2E_FORCE_LOGIN=1` forces a new login. `auth/*.spec.ts` run logged out (`*-anon` projects); all other specs start logged in, so import `test` from `fixtures`.
 
 ## Layout
 
-- `tests/<area>/*.spec.ts` — `sales`, `purchase`, `payments`, `receipts`, `expenses`, `books` (cashbook + bankbook), `invoices`, `reports`, `auth`.
+- `tests/accounting/year-end-closing.spec.ts` — year-end close. Irreversible, and each run locks the lowest unused fiscal year from 2000, so the closing scenarios skip unless `E2E_YEAR_END=1` (admin login, never prod). The route check always runs.
+- `tests/<area>/*.spec.ts` — `sales` (incl. `freight-gst`), `purchase` (incl. `service-catalog`), `payments`, `receipts`, `expenses`, `books` (cashbook + bankbook), `invoices`, `reports`, `auth`, `business-profile` (freight SAC code).
 - `fixtures/index.ts` — import `test, expect` from here. Provides `app` (AppPage), `api` (authenticated REST client), `uid`, and an auto `guard` that fails any test that sees a page error or an API 5xx.
 - `pages/` — page objects (`AppPage` base, `LoginPage`, one per module). Locators are built in the constructor, role/label first.
 - `support/` — `env.ts`, `api-client.ts`, `data.ts` (`uid`, `isoDate`, `money`, `parseMoney`).
-- `_legacy/` — old first-pass specs kept for reference only; delete each once its area is rewritten.
+- `_legacy/` — superseded first-pass specs; every area is rewritten, safe to delete.
+- Tests that document a known UI/API bug use `test.fail(true, 'BUG: ...')`; remove the marker when the bug is fixed (the test will then start failing as a reminder).
 
 ## Writing tests
 
@@ -37,5 +43,5 @@ npx playwright show-report
 
 - Prefer role/label/test-id locators over CSS. Add `data-testid` in `../ecommerce-bolt` only when the user agrees.
 - No fixed `waitForTimeout`; wait on locators or responses.
-- Tests must not depend on order; create their own data with unique references (`Date.now()`).
+- Tests must not depend on order; create their own data with `uid()`.
 - UI behaviour and form patterns are defined in `../ecommerce-bolt/CLAUDE.md`. When a test fails, find out whether the UI or the test is wrong before changing the test.
