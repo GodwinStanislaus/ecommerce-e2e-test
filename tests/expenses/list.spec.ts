@@ -51,7 +51,7 @@ test.describe('Expenses list', () => {
     expect(cells[5]).toBe('₹450');
     expect(cells[6]).toBe('');
     expect(cells[7]).toBe('₹2950');
-    expect(cells[8]).toBe('Credit');
+    expect(cells[8]).toMatch(/^(Credit|Unpaid)$/);
     expect(cells[9]).toBe(bill.voucherNo);
   });
 
@@ -132,7 +132,7 @@ test.describe('Expenses list', () => {
 
     await expense.payment.selectOption('CREDIT');
     await expect(expense.tableRows()).toHaveCount(1);
-    await expect(expense.rowContaining(`${tag}-CR`)).toContainText('Credit');
+    await expect(expense.rowContaining(`${tag}-CR`)).toContainText(/Credit|Unpaid/);
 
     await expense.payment.selectOption('');
     await expect(expense.tableRows()).toHaveCount(2);

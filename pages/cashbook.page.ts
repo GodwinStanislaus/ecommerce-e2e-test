@@ -36,13 +36,23 @@ export class BookListPage extends AppPage {
   }
 
   async open(): Promise<void> {
+    // Wait for the first list response. The list does not cancel older requests, so a late initial
+    // response would overwrite a later search result.
+    const firstList = this.page.waitForResponse(
+      (r) => r.request().method() === 'GET' && r.url().includes(`${this.apiPath}?`),
+    );
     await this.goto(this.path);
+    await firstList;
     await expect(this.addButton).toBeVisible();
   }
 
   /** Types in the search box and waits for the debounced list request to come back. */
   async searchFor(term: string): Promise<void> {
-    await this.afterResponse('GET', `${this.apiPath}?`, () => this.search.fill(term));
+    // Match on the term itself: the list's first load may still be in flight and would otherwise satisfy the wait.
+    const wanted = encodeURIComponent(term);
+    await this.afterResponse('GET', new RegExp(`${escapeRe(this.apiPath)}\\?.*${escapeRe(wanted)}`), () =>
+      this.search.fill(term),
+    );
   }
 
   /** Row whose text contains the unique marker (particulars or voucher number). */
@@ -52,6 +62,8 @@ export class BookListPage extends AppPage {
 
   /** Cell texts of a row, in column order: Date, Type, ledger, counter ledger, Amount, Particulars, Status, Actions. */
   async cells(row: Locator): Promise<string[]> {
+    // allInnerTexts() does not wait, so make sure the row has rendered first.
+    await expect(row.first()).toBeVisible();
     return (await row.locator('td').allInnerTexts()).map((t) => t.replace(/\s+/g, ' ').trim());
   }
 
@@ -114,10 +126,20 @@ export class CashBookReportPage extends AppPage {
     await this.fromDate.fill(from);
     await this.toDate.fill(to);
     if (accountName) {
-      await this.accountInput.fill(accountName);
-      await this.page.getByRole('option', { name: new RegExp(escapeRe(accountName)) }).first().click();
+      // The typeahead filters a list that loads in the background and does not refresh once it arrives,
+      // so on a slow network typing too early shows nothing: retype until the option is offered.
+      const option = this.page.getByRole('option', { name: new RegExp(escapeRe(accountName)) }).first();
+      await expect(async () => {
+        await this.accountInput.fill('');
+        await this.accountInput.fill(accountName);
+        await expect(option).toBeVisible({ timeout: 2_000 });
+      }).toPass({ timeout: 15_000 });
+      await option.click();
     }
     await this.afterResponse('GET', '/reports/cash-book', () => this.generate.click());
+    // The response arrives before the cards re-render; Generate is disabled while loading and re-enabled
+    // in the same update that shows the new report, so this guarantees the cards below are current.
+    await expect(this.generate).toBeEnabled();
   }
 
   /** The card for one account (found by its heading). */

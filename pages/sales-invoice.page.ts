@@ -55,7 +55,9 @@ export class SalesInvoicePage extends AppPage {
 
   /** Searches by invoice number and waits for the list API round-trip. */
   async searchFor(term: string): Promise<void> {
-    await this.afterResponse('GET', '/sales-invoice/list', () => this.search.fill(term));
+    // Wait for the response that carries the term: the list's first load may still be in flight.
+    const wanted = encodeURIComponent(term).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    await this.afterResponse('GET', new RegExp(`/sales-invoice/list\\?.*${wanted}`), () => this.search.fill(term));
   }
 
   /** The icon-only "View details" button in a row (it has no accessible name, so use its title). */

@@ -1,7 +1,10 @@
 import { test, expect } from '../../fixtures';
 import { isoDate, money } from '../../support/data';
 import { ExpensePage } from '../../pages/expense.page';
+import { ACCOUNTS } from '../books/book-data';
 import { GSTIN, headUnder } from './helpers';
+
+const BANK = ACCOUNTS.bank.name;
 
 interface SavedBill {
   id: string;
@@ -119,14 +122,14 @@ test.describe('Create supplier bill', () => {
       lines: [{ head, sac: '9985', rate: 500, gst: 12 }],
     });
     const options = await expense.paidFrom.locator('option').allInnerTexts();
-    expect(options).toContain('HDFC Bank');
+    expect(options).toContain(BANK);
     expect(options).not.toContain('Cash in Hand');
-    await expense.paidFrom.selectOption({ label: 'HDFC Bank' });
+    await expense.paidFrom.selectOption({ label: BANK });
 
     const saved = await (await expense.submit()).json();
-    await expect(expense.viewField('Paid from')).toHaveText('HDFC Bank');
+    await expect(expense.viewField('Paid from')).toHaveText(BANK);
     const bill = await api.get<SavedBill>(`/expense-entries/${saved.id}`);
-    expect(bill).toMatchObject({ paymentMode: 'CASH', paymentAccountName: 'HDFC Bank', amount: 500, gstAmount: 60, totalAmount: 560 });
+    expect(bill).toMatchObject({ paymentMode: 'CASH', paymentAccountName: BANK, amount: 500, gstAmount: 60, totalAmount: 560 });
   });
 
   test('switching Cash to Bank clears a paid-from that no longer fits', async () => {

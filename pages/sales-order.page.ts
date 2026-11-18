@@ -16,6 +16,13 @@ export class SalesOrderPage extends AppPage {
   readonly validationAlert: Locator;
   readonly quantityInput: Locator;
 
+  // Freight card (<so-freight>)
+  readonly freightCard: Locator;
+  readonly freightOverrideButton: Locator;
+  readonly manualFreightInput: Locator;
+  /** Manual freight GST %: read-only, always the rate the API applies. */
+  readonly manualFreightGstRate: Locator;
+
   // View
   readonly confirmButton: Locator;
   readonly actionsMenu: Locator;
@@ -32,6 +39,11 @@ export class SalesOrderPage extends AppPage {
     this.saveButton = page.getByRole('button', { name: /save order/i });
     this.validationAlert = page.getByRole('alert').filter({ hasText: 'Please fix the following' });
     this.quantityInput = page.getByTitle('Quantity');
+
+    this.freightCard = page.locator('so-freight');
+    this.freightOverrideButton = this.freightCard.getByRole('button', { name: /override/i });
+    this.manualFreightInput = this.freightCard.getByPlaceholder('0.00');
+    this.manualFreightGstRate = this.freightCard.locator('input[readonly]');
 
     this.confirmButton = page.getByRole('button', { name: /confirm order/i });
     this.actionsMenu = page.getByRole('button', { name: /actions/i });

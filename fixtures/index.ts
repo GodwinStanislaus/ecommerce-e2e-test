@@ -5,7 +5,7 @@ import { test as base, expect } from '@playwright/test';
 import { AppPage } from '../pages/app.page';
 import { ApiClient } from '../support/api-client';
 import { uid } from '../support/data';
-import { SESSION_FILE } from '../support/env';
+import { env, SESSION_FILE } from '../support/env';
 import { createSupplier } from '../tests/expenses/helpers';
 
 type Fixtures = {
@@ -68,7 +68,9 @@ export const test = base.extend<Fixtures, WorkerFixtures>({
       const problems: string[] = [];
       page.on('pageerror', (err) => problems.push(`pageerror: ${err.message}`));
       page.on('response', (res) => {
-        if (res.status() >= 500) {
+        // Only the app's own backends: third-party scripts (analytics etc.) failing is not an app bug.
+        const ownOrigin = [env.baseUrl, env.apiUrl].some((o) => res.url().startsWith(o));
+        if (ownOrigin && res.status() >= 500) {
           problems.push(`${res.status()} ${res.request().method()} ${res.url()}`);
         }
       });

@@ -94,7 +94,6 @@ test.describe('Receipts list', () => {
   });
 
   test('searching by invoice number finds the receipt (as the placeholder promises)', async ({ page, api, uid }) => {
-    test.fail(true, 'BUG: search box says "receipt number or invoice" but an invoice number matches nothing');
     const customer = await createCustomer(api, uid('E2E Cust'), uniqueMobile());
     const invoice = await createSalesInvoice(api, customer);
     const receipt = await createReceipt(api, { customerId: customer.id, invoiceId: invoice.id, amount: 100 });

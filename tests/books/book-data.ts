@@ -6,15 +6,34 @@ import { isoDate } from '../../support/data';
 export type Mode = 'cash' | 'bank';
 export type Kind = 'receipt' | 'payment';
 
-/** Accounts / counter ledgers on the dev DB (ids from /cash-book/ledgers and /bank-book/ledgers). */
+const num = (name: string, fallback: number) => Number(process.env[name] ?? fallback);
+const str = (name: string, fallback: string) => process.env[name] || fallback;
+
+/**
+ * Cash/bank accounts and counter ledgers. Defaults are the local dev DB's ids; other environments have their own
+ * ids, so override them per environment in `.env.<name>` (E2E_CASH_ACCOUNT_ID, ...; see `.env.example`).
+ * Find ids with GET /cash-book/ledgers?purpose=cash, /bank-book/ledgers?purpose=bank, /cash-book/counter-ledgers.
+ */
 export const ACCOUNTS = {
-  cash: { id: 54, name: 'Petty Cash', path: '/cash-book', key: 'cashAccountId', route: '/cashbook' },
-  bank: { id: 172, name: 'Bank - Indian Bank', path: '/bank-book', key: 'bankAccountId', route: '/bankbook' },
-} as const;
+  cash: {
+    id: num('E2E_CASH_ACCOUNT_ID', 54),
+    name: str('E2E_CASH_ACCOUNT_NAME', 'Petty Cash'),
+    path: '/cash-book',
+    key: 'cashAccountId',
+    route: '/cashbook',
+  },
+  bank: {
+    id: num('E2E_BANK_ACCOUNT_ID', 172),
+    name: str('E2E_BANK_ACCOUNT_NAME', 'Bank - Indian Bank'),
+    path: '/bank-book',
+    key: 'bankAccountId',
+    route: '/bankbook',
+  },
+};
 export const COUNTER = {
-  receipt: { id: 88, name: 'Interest Received' },
-  payment: { id: 41, name: 'Freight Inbound' },
-} as const;
+  receipt: { id: num('E2E_RECEIPT_COUNTER_ID', 88), name: str('E2E_RECEIPT_COUNTER_NAME', 'Interest Received') },
+  payment: { id: num('E2E_PAYMENT_COUNTER_ID', 41), name: str('E2E_PAYMENT_COUNTER_NAME', 'Freight Inbound') },
+};
 
 export interface BookEntry {
   id: string;
@@ -24,6 +43,8 @@ export interface BookEntry {
   amount: number;
   particulars: string;
   date: string;
+  /** Status right after creation: DRAFT, or APPROVED when the environment approves on creation. */
+  status: string;
   accountName: string;
   counterName: string;
 }
@@ -70,7 +91,8 @@ export async function createEntry(
     .toBe('ok');
 
   let voucherNumber: string = created.voucherNumber;
-  if (approve) {
+  // Some environments approve on creation (the response is already APPROVED); only DRAFTs can be approved.
+  if (approve && created.status === 'DRAFT') {
     // The voucher number can change on approval, so read it from the approved voucher.
     const approved = await api.post(`${acc.path}/${created.voucherId}/approve`, {});
     voucherNumber = approved.voucherNumber;
@@ -83,6 +105,7 @@ export async function createEntry(
     amount,
     particulars,
     date,
+    status: approve && created.status === 'DRAFT' ? 'APPROVED' : created.status,
     accountName: acc.name,
     counterName: counter.name,
   };
@@ -98,7 +121,9 @@ async function fund(api: ApiClient, mode: Mode, amount: number, date: string): P
     amount,
     particulars: 'e2e funding',
   });
-  await api.post(`${acc.path}/${draft.voucherId}/approve`, {});
+  if (draft.status === 'DRAFT') {
+    await api.post(`${acc.path}/${draft.voucherId}/approve`, {});
+  }
 }
 
 /** Random past day within [minBack, maxBack] days ago (inside the open financial period) so a date test has a day nobody else posts to. */

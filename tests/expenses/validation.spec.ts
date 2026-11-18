@@ -52,13 +52,18 @@ test.describe('Supplier bill form: validation and behaviour', () => {
 
   test('cash or bank payment needs a paid-from account', async ({ uid }) => {
     await expense.fillBill({
-      supplier, pay: 'Cash', invoiceNo: uid('INV'), invoiceDate: isoDate(0),
+      supplier, pay: 'Bank', invoiceNo: uid('INV'), invoiceDate: isoDate(0),
       lines: [{ head, sac: '9985', rate: 100, gst: 18 }],
     });
+    // The form picks the account itself when the mode has only one, leaving nothing to validate.
+    test.skip(
+      (await expense.paidFrom.inputValue()) !== '',
+      'This environment has a single bank account, so Paid from is pre-selected.',
+    );
     await saveRefused();
     await expect(expense.problems).toContainText('Choose the account the bill was paid from');
     await expect(expense.paidFrom).toHaveClass(/is-invalid/);
-    await expense.paidFrom.selectOption({ label: 'Cash in Hand' });
+    await expense.paidFrom.selectOption({ index: 1 });
     await expect(expense.problems).toBeHidden();
   });
 

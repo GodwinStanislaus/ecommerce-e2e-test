@@ -15,9 +15,13 @@
     "test:receipts": "playwright test tests/receipts",
     "test:expenses": "playwright test tests/expenses",
     "test:books": "playwright test tests/books",
+    "test:accounting": "playwright test tests/accounting",
     "typecheck": "tsc --noEmit",
     "lint:swallow": "! grep -rnE \"\\.catch\\(\\(\\) ?=> ?\\{ ?\\}\\)|waitForTimeout\" tests pages fixtures support",
-    "check": "npm run typecheck && npm run lint:swallow"
+    "check": "npm run typecheck && npm run lint:swallow",
+    "test:local": "E2E_ENV=local playwright test",
+    "test:staging": "E2E_ENV=staging playwright test",
+    "test:test": "E2E_ENV=test playwright test"
   },
   "devDependencies": {
     "@playwright/test": "^1.48.2",

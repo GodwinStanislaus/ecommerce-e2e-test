@@ -29,7 +29,12 @@ interface Account {
 }
 
 /** First non-group expense head under "Direct Expenses" or "Indirect Expenses". */
+const headCache = new Map<string, Account>();
+
+/** Cached per worker: the deployed API throttles per IP, and this lookup runs in almost every test. */
 export async function headUnder(api: ApiClient, kind: 'direct' | 'indirect'): Promise<Account> {
+  const cached = headCache.get(kind);
+  if (cached) return cached;
   const parentName = kind === 'direct' ? 'Direct Expenses' : 'Indirect Expenses';
   const groups = await api.get<Account[]>('/account-master', { accountType: 'Expense', isGroup: true });
   const parent = groups.find((g) => g.accountName === parentName);
@@ -37,13 +42,19 @@ export async function headUnder(api: ApiClient, kind: 'direct' | 'indirect'): Pr
   const heads = await api.get<Account[]>('/account-master', { accountType: 'Expense', isGroup: false });
   const head = heads.find((h) => h.parentId === parent.accountId);
   if (!head) throw new Error(`No head under "${parentName}"`);
+  headCache.set(kind, head);
   return head;
 }
 
+const accountCache = new Map<string, Account>();
+
 export async function accountByName(api: ApiClient, name: string): Promise<Account> {
+  const cached = accountCache.get(name);
+  if (cached) return cached;
   const all = await api.get<Account[]>('/account-master');
   const found = all.find((a) => a.accountName === name);
   if (!found) throw new Error(`No account named "${name}"`);
+  accountCache.set(name, found);
   return found;
 }
 

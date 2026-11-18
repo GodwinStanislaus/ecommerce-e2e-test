@@ -59,7 +59,9 @@ export class ReceiptPage extends AppPage {
   }
 
   async searchFor(text: string): Promise<void> {
-    await this.afterResponse('GET', '/receipt/list', () => this.search.fill(text));
+    // Wait for the response that carries the term: the list's first load may still be in flight.
+    const wanted = encodeURIComponent(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    await this.afterResponse('GET', new RegExp(`/receipt/list\\?.*${wanted}`), () => this.search.fill(text));
   }
 
   async pickCustomer(name: string): Promise<void> {

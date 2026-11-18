@@ -25,3 +25,6 @@ export function parseMoney(text: string): number {
   const cleaned = text.replace(/[^0-9.\-]/g, '');
   return cleaned ? Number(cleaned) : 0;
 }
+
+/** Tamil Nadu supplier/customer state: the API returns the GST code ('33') on some environments and 'TN' on others. */
+export const isTamilNadu = (stateCode?: string | null): boolean => stateCode === '33' || stateCode === 'TN';

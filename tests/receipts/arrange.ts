@@ -55,8 +55,21 @@ export async function createSalesInvoice(
   customer: ArrangedCustomer,
   quantity = 2,
 ): Promise<ArrangedSalesInvoice> {
-  const products = await api.get('/product/list', { page: 1, pageSize: 1 });
-  const productId = products.products[0].id as string;
+  // Specs receive/allocate up to ₹1,000 and expect part-payments, so the invoice must be well above that
+  // whatever the environment's prices are: size the quantity from the product's rate.
+  const products = await api.get('/product/list', { page: 1, limit: 50 });
+  // Only products whose stock covers the needed quantity qualify; take the one with the most headroom,
+  // since parallel specs draw down the same shared stock.
+  const need = (x: any) => Math.max(quantity, Math.ceil(2500 / Number(x.saleRate)));
+  const stockOf = (x: any) => Number(x.inventory?.stockQuantity ?? 0);
+  const product = products.products
+    .filter((x: any) => x.isActive && Number(x.saleRate) > 0 && stockOf(x) >= need(x))
+    .sort((a: any, b: any) => stockOf(b) / need(b) - stockOf(a) / need(a))[0];
+  if (!product) {
+    throw new Error('No active product has enough stock for a ₹2,500 invoice');
+  }
+  const productId = product.id as string;
+  quantity = need(product);
   const order = await api.post('/order', {
     customerId: customer.id,
     shippingAddressId: customer.addressId,

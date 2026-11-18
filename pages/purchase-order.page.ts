@@ -20,6 +20,9 @@ export class PurchaseOrderPage extends AppPage {
   readonly ewayBill: Locator;
   readonly supplierInvoice: Locator;
   readonly addItemButton: Locator;
+  /** Service lines (Freight, Insurance): SAC and GST rate come from GET /purchase-service-catalog. */
+  readonly serviceSac: Locator;
+  readonly serviceGstRate: Locator;
   readonly saveButton: Locator;
   readonly validationSummary: Locator;
   readonly lockedBanner: Locator;
@@ -50,6 +53,8 @@ export class PurchaseOrderPage extends AppPage {
     this.ewayBill = page.getByPlaceholder('12-digit number');
     this.supplierInvoice = page.getByPlaceholder("Supplier's invoice number");
     this.addItemButton = page.getByRole('button', { name: /Add Item/ });
+    this.serviceSac = page.locator('input[formcontrolname="sacCode"]');
+    this.serviceGstRate = page.locator('select[formcontrolname="gstRate"]');
     this.saveButton = page.getByRole('button', { name: /Save Purchase Order/ });
     this.validationSummary = page.getByRole('alert').filter({ hasText: 'Please fix the following' });
     this.lockedBanner = page.getByRole('alert').filter({ hasText: 'This order cannot be edited' });

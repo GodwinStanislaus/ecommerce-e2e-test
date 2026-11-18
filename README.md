@@ -1,136 +1,80 @@
 # eCommerce Bolt - E2E Tests
 
-End-to-end test suite for the eCommerce Bolt application using Playwright.
-
-## Project Structure
-
-```
-ecommerce-bolt-e2e/
-├── playwright.config.ts       # Playwright configuration
-├── package.json              # Dependencies and scripts
-├── tests/
-│   ├── auth/                 # Authentication tests
-│   │   └── login.spec.ts
-│   ├── invoices/             # Invoice and order tests
-│   │   ├── sales-order.spec.ts
-│   │   ├── sales-invoice.spec.ts
-│   │   ├── purchase-invoice.spec.ts
-│   │   └── credit-debit-notes.spec.ts
-│   ├── payments/             # Payment and receipt tests
-│   │   ├── payment.spec.ts
-│   │   └── receipt.spec.ts
-│   └── reports/              # Report tests
-│       └── reports.spec.ts
-└── fixtures/
-    ├── base-page.ts          # Base page object for common actions
-    └── test-data.ts          # Test data and fixtures
-```
+Playwright end-to-end tests for the admin UI (`../ecommerce-bolt`, Angular) and its API (`../ecommerce-api`, NestJS).
 
 ## Setup
 
-1. Install dependencies:
 ```bash
 npm install
+npx playwright install chromium     # add firefox webkit for E2E_ALL_BROWSERS=1
+cp .env.example .env.local          # then fill in the login (one file per environment)
 ```
 
-2. Ensure the Angular app is running on http://localhost:4200:
+`.env.<name>` values: `E2E_BASE_URL`, `E2E_API_URL`, `E2E_MOBILE`, `E2E_PASSWORD`, optional `E2E_BUSINESS` (used when the account belongs to several businesses). These files are gitignored. Never commit credentials.
+
+For `local`, the UI is started (or reused) automatically on :4200; the API must already be running on :3000.
+
+## Running
+
 ```bash
-cd ../ecommerce-bolt
-npm start
+./scripts/with-env.sh npx playwright test                       # everything, local
+./scripts/with-env.sh npx playwright test tests/books           # one area
+./scripts/with-env.sh npx playwright test tests/sales/sales-order.spec.ts
+./scripts/with-env.sh npx playwright test -g "cannot be confirmed"
+npm run test:headed | test:debug | test:ui                      # interactive modes
+npm run test:sales | test:purchase | test:payments | test:receipts | test:expenses | test:books | test:auth
+npx playwright show-report                                      # HTML report of the last run
 ```
 
-## Running Tests
+### Other environments
 
-### Run all tests
 ```bash
-npm test
+E2E_ENV=test    ./scripts/with-env.sh npx playwright test
+E2E_ENV=staging ./scripts/with-env.sh npx playwright test tests/payments
 ```
 
-### Run tests in headed mode (visible browser)
-```bash
-npm run test:headed
+`E2E_ENV` (default `local`) selects `.env.<name>` and a separate saved login in `.auth/<name>/`. Only `local` starts a dev server; other environments must already be deployed. `E2E_ENV=prod...` is refused unless `E2E_ALLOW_PROD=1`. The tests create vouchers, orders and expenses and do not clean them up, so use environments where that is acceptable. Cash and bank book tests need an admin or accounts role.
+
+Shortcuts: `npm run test:local | test:test | test:staging`. Note these need credentials in `.env.<name>` or the shell (the `../api-test/.env` fallback is only in `with-env.sh`, for `local`).
+
+## Coverage
+
+| Area | Folder | What it covers |
+|---|---|---|
+| Auth | `tests/auth` | login form, validation, bad credentials, protected routes |
+| Sales orders | `tests/sales` | create, confirm, blocked confirm |
+| Purchase orders | `tests/purchase` | create, confirm, blocked confirm |
+| Invoices, credit/debit notes | `tests/invoices` | sales/purchase invoices, notes |
+| Purchase payments | `tests/payments` | list, create (cash/bank), allocation, view |
+| Receipts | `tests/receipts` | list, create, allocation, view |
+| Expenses | `tests/expenses` | list, create, validation |
+| Cash book, bank book | `tests/books` | filters, balances, vouchers in the right book, export |
+| Reports | `tests/reports` | filters, quick filter, export |
+
+Tests marked `test.fail(true, 'BUG: ...')` document known UI/API bugs and pass while the bug exists. When a bug is fixed, the test starts failing: remove the marker.
+
+## Layout
+
+```
+playwright.config.ts   projects: setup -> chromium (logged in), chromium-anon (auth specs)
+tests/<area>/          specs; tests/setup/auth.setup.ts signs in once per run
+fixtures/index.ts      `test` with app, api (REST client), uid and an auto guard (fails on page errors / API 5xx)
+pages/                 page objects (role/label locators, built in the constructor)
+support/               env.ts, api-client.ts, data.ts (uid, isoDate, parseMoney)
+scripts/with-env.sh    runs a command with login env set
 ```
 
-### Run tests in debug mode
-```bash
-npm run test:debug
-```
+## Writing tests
 
-### Run tests in UI mode
-```bash
-npm run test:ui
-```
-
-### Run specific test suite
-```bash
-npm run test:auth                # Authentication tests
-npm run test:invoices            # Invoice tests
-npm run test:payments            # Payment tests
-npm run test:reports             # Report tests
-```
-
-### Run specific test file
-```bash
-npx playwright test tests/auth/login.spec.ts
-```
-
-## Test Coverage
-
-- **Auth Tests**: Login, logout, credential validation
-- **Sales Order Tests**: Create, view, update, list sales orders
-- **Sales Invoice Tests**: Create, view, generate PDF, mark paid
-- **Purchase Invoice Tests**: Create, view, update, verify totals
-- **Payment Tests**: Create, view, filter, update status
-- **Receipt Tests**: Create, view, generate PDF, update status
-- **Credit/Debit Notes Tests**: Create, view, verify totals, filter by type
-- **Report Tests**: View, filter, export reports to CSV/Excel
-
-## Test Data
-
-Test data is configured in `fixtures/test-data.ts` and includes:
-- Valid and invalid login credentials
-- Customer and supplier information
-- Product details
-- Various transaction amounts
-
-## Notes
-
-- Tests use selectors that may need adjustment based on your actual UI
-- Some selectors include fallback options (e.g., `'button:has-text("Save"), button:has-text("Create")'`)
-- Tests handle cases where elements may not exist using `.catch(() => {})`
-- Screenshots and traces are captured on test failures
-- Multi-browser testing configured (Chromium, Firefox, WebKit)
+- Import `test, expect` from `fixtures`.
+- Arrange data through `api`, act and assert through the UI, confirm persistence via `api`.
+- Wait on `app.afterResponse(...)` or web-first `expect`; no `waitForTimeout`, no `.catch(() => {})` (`npm run check` enforces this along with the type check).
+- Create data with `uid()` and assert on your own records, never on absolute totals: the database is shared.
 
 ## Debugging
 
-1. **Run in headed mode**: `npm run test:headed`
-2. **Run in debug mode**: `npm run test:debug` (opens Playwright Inspector)
-3. **View traces**: Test traces are saved and can be viewed with Playwright Inspector
-4. **Check screenshots**: Failed tests generate screenshots in `test-results/` folder
+`npm run test:debug` (inspector), `npm run test:ui`, or open `playwright-report/index.html`. Failures keep screenshots and video in `test-results/`; traces are captured on the first retry (CI only retries).
 
-## CI/CD Integration
+## CI
 
-The `playwright.config.ts` is configured for CI/CD:
-- Retries on failure (2 retries in CI)
-- Single worker in CI (avoid concurrency issues)
-- HTML report generation
-- Screenshot/trace capture on failures
-
-To run in CI mode:
-```bash
-CI=true npm test
-```
-
-## Customization
-
-1. **Update Base URL**: Edit `baseURL` in `playwright.config.ts`
-2. **Change credentials**: Update `testData.credentials` in `fixtures/test-data.ts`
-3. **Add new tests**: Create new `.spec.ts` files following the existing pattern
-4. **Update selectors**: Adjust selectors in tests to match your UI elements
-
-## Troubleshooting
-
-- **Tests fail to connect**: Ensure Angular app is running on http://localhost:4200
-- **Element not found**: Adjust selectors in the test file
-- **Timeout errors**: Increase timeout values in test or adjust `waitForLoadState()`
-- **Authentication issues**: Verify credentials in `fixtures/test-data.ts`
+`CI=true` enables 2 retries, one worker and `forbidOnly`.

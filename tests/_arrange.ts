@@ -1,6 +1,6 @@
 /** API-side arrangement for invoice/note/report specs (invoices & reports session). */
 import type { ApiClient } from '../support/api-client';
-import { isoDate } from '../support/data';
+import { isoDate, isTamilNadu } from '../support/data';
 
 export interface ArrangedSalesInvoice {
   id: string;
@@ -69,7 +69,7 @@ export async function createSalesInvoice(api: ApiClient, qty = 2): Promise<Arran
  */
 export async function createPurchaseInvoice(api: ApiClient, supplierBillNo: string, qty = 3, rate = 100) {
   const [suppliers, product] = [await api.get('/supplier', { limit: 50, page: 1 }), await pickProduct(api)];
-  const supplier = suppliers.suppliers.find((s: any) => s.gstin && s.stateCode === 'TN');
+  const supplier = suppliers.suppliers.find((s: any) => s.gstin && isTamilNadu(s.stateCode));
   const po = await api.post('/purchase-orders', {
     supplierId: supplier.id,
     orderDate: isoDate(0),
