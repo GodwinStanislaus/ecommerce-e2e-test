@@ -31,6 +31,8 @@ export const env = {
   apiUrl: process.env['E2E_API_URL'] ?? 'http://localhost:3000',
   business: process.env['E2E_BUSINESS'] ?? '',
   allBrowsers: process.env['E2E_ALL_BROWSERS'] === '1',
+  /** Code typed on the 2FA step. Must equal the API's SMS_TEST_CODE (API runs SMS_MODE=fixed) or TOTP_TEST_CODE. */
+  twoFactorCode: process.env['E2E_TWO_FACTOR_CODE'] ?? '123456',
   /** Read lazily so specs that never log in don't need credentials. */
   get mobile(): string {
     return required('E2E_MOBILE');

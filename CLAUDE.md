@@ -19,9 +19,9 @@ npx playwright show-report
 
 ## Environments and auth
 
-Config per environment lives in gitignored `.env.<name>` (template: `.env.example`): `E2E_BASE_URL`, `E2E_API_URL`, `E2E_MOBILE`, `E2E_PASSWORD`, optional `E2E_BUSINESS`. Precedence: shell > `.env.<E2E_ENV>` > `.env`. `scripts/with-env.sh` additionally falls back to `../api-test/.env` for `local` only. Never hard-code or print credentials.
+Config per environment lives in gitignored `.env.<name>` (template: `.env.example`): `E2E_BASE_URL`, `E2E_API_URL`, `E2E_MOBILE`, `E2E_PASSWORD`, optional `E2E_BUSINESS` and `E2E_TWO_FACTOR_CODE` (default `123456`). Precedence: shell > `.env.<E2E_ENV>` > `.env`. `scripts/with-env.sh` additionally falls back to `../api-test/.env` for `local` only. Never hard-code or print credentials.
 
-`tests/setup/auth.setup.ts` signs in once through the real login screen (handles the business picker) and saves cookies to `.auth/<env>/user.json` plus the app's sessionStorage user to `.auth/<env>/session.json` (Playwright's storageState cannot carry sessionStorage; the `context` fixture in `fixtures/index.ts` restores it). Reused while the access token (15 min) has 12+ min left, so a full run never outlives it; `E2E_FORCE_LOGIN=1` forces a new login. `auth/*.spec.ts` run logged out (`*-anon` projects); all other specs start logged in, so import `test` from `fixtures`.
+`tests/setup/auth.setup.ts` signs in once through the real login screen (handles the 2FA code step and the business picker; the API must run `SMS_MODE=fixed` with `SMS_TEST_CODE` equal to `E2E_TWO_FACTOR_CODE`, and the account must have no authenticator app unless the API sets `TOTP_TEST_CODE` to the same value) and saves cookies to `.auth/<env>/user.json` plus the app's sessionStorage user to `.auth/<env>/session.json` (Playwright's storageState cannot carry sessionStorage; the `context` fixture in `fixtures/index.ts` restores it). Reused while the access token (15 min) has 12+ min left, so a full run never outlives it; `E2E_FORCE_LOGIN=1` forces a new login. `auth/*.spec.ts` run logged out (`*-anon` projects); all other specs start logged in, so import `test` from `fixtures`.
 
 ## Layout
 

@@ -1,11 +1,16 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
+import { env } from '../support/env';
+
 export class LoginPage {
   readonly mobile: Locator;
   readonly password: Locator;
   readonly submit: Locator;
   readonly error: Locator;
   readonly workspaceHeading: Locator;
+  readonly codeHeading: Locator;
+  readonly code: Locator;
+  readonly verify: Locator;
 
   constructor(private readonly page: Page) {
     this.mobile = page.getByLabel('Mobile number');
@@ -13,6 +18,10 @@ export class LoginPage {
     this.submit = page.getByRole('button', { name: /^sign in/i });
     this.error = page.getByRole('alert');
     this.workspaceHeading = page.getByRole('heading', { name: 'Choose a business' });
+    this.codeHeading = page.getByRole('heading', { name: "Verify it's you" });
+    // Six one-digit boxes ("Verification code digit 1".."6") in newer UIs, one field in older ones.
+    this.code = page.getByRole('textbox', { name: /^Verification code( digit 1)?$/ });
+    this.verify = page.getByRole('button', { name: /^verify/i });
   }
 
   async goto(): Promise<void> {
@@ -32,7 +41,17 @@ export class LoginPage {
 
     const landed = this.page.waitForURL((url) => !url.pathname.startsWith('/login'));
     const picker = this.workspaceHeading.waitFor();
-    await Promise.race([landed, picker]);
+    const codeStep = this.codeHeading.waitFor();
+    await Promise.race([landed, picker, codeStep]);
+
+    // Accounts sign in with a second step. The API runs SMS_MODE=fixed, so the code is a known constant.
+    if (await this.codeHeading.isVisible()) {
+      // Typing (not fill) so the digit boxes advance on their own.
+      await this.code.click();
+      await this.code.pressSequentially(env.twoFactorCode);
+      await this.verify.click();
+      await Promise.race([landed, picker]);
+    }
 
     if (await this.workspaceHeading.isVisible()) {
       const items = this.page.getByRole('listitem').getByRole('button');
