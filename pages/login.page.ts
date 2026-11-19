@@ -19,7 +19,8 @@ export class LoginPage {
     this.error = page.getByRole('alert');
     this.workspaceHeading = page.getByRole('heading', { name: 'Choose a business' });
     this.codeHeading = page.getByRole('heading', { name: "Verify it's you" });
-    this.code = page.getByLabel('Verification code');
+    // Six one-digit boxes ("Verification code digit 1".."6") in newer UIs, one field in older ones.
+    this.code = page.getByRole('textbox', { name: /^Verification code( digit 1)?$/ });
     this.verify = page.getByRole('button', { name: /^verify/i });
   }
 
@@ -45,7 +46,9 @@ export class LoginPage {
 
     // Accounts sign in with a second step. The API runs SMS_MODE=fixed, so the code is a known constant.
     if (await this.codeHeading.isVisible()) {
-      await this.code.fill(env.twoFactorCode);
+      // Typing (not fill) so the digit boxes advance on their own.
+      await this.code.click();
+      await this.code.pressSequentially(env.twoFactorCode);
       await this.verify.click();
       await Promise.race([landed, picker]);
     }
