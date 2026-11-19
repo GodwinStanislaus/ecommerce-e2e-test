@@ -9,6 +9,10 @@ export class PurchaseOrderPage extends AppPage {
   // List
   readonly search: Locator;
   readonly newOrderLink: Locator;
+  readonly scanBillButton: Locator;
+  readonly scanBillInput: Locator;
+  readonly billsToMapLink: Locator;
+  readonly sourceFilter: Locator;
 
   // Form
   readonly supplierInput: Locator;
@@ -43,6 +47,10 @@ export class PurchaseOrderPage extends AppPage {
     super(page);
     this.search = page.getByPlaceholder('Search by PO number or supplier…');
     this.newOrderLink = page.getByRole('link', { name: 'New Order' });
+    this.scanBillButton = page.getByTestId('scan-bill-btn');
+    this.scanBillInput = page.getByTestId('scan-bill-input');
+    this.billsToMapLink = page.getByTestId('bills-to-map-link');
+    this.sourceFilter = page.getByTestId('po-source-filter');
 
     this.supplierInput = page.getByRole('combobox', { name: 'Search supplier…' });
     this.poDate = page.locator('#poDate');
