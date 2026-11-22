@@ -101,7 +101,9 @@ test.describe('Year-end closing: scenarios', () => {
     });
 
     await test.step('the year and every period are locked', async () => {
-      expect((await statusOf(api, fy.id)).status).toBe('LOCKED');
+      const closed = await statusOf(api, fy.id);
+      expect(closed.status).toBe('CLOSED');
+      expect(closed.isLocked).toBe(true);
       const periods = await listPeriods(api, fy.id);
       expect(periods).toHaveLength(12);
       expect(periods.every((p) => p.status === 'LOCKED')).toBe(true);
@@ -149,7 +151,8 @@ test.describe('Year-end closing: scenarios', () => {
 
     await expect(yec.toast(`Year-end close completed for ${label}. Net profit ${NET_PROFIT_PLAIN}`)).toBeVisible();
     const locked: FiscalYear = await statusOf(api, fy.id);
-    expect(locked.status).toBe('LOCKED');
+    expect(locked.status).toBe('CLOSED');
+    expect(locked.isLocked).toBe(true);
     expect((await listPeriods(api, fy.id)).every((p) => p.status === 'LOCKED')).toBe(true);
   });
 });
