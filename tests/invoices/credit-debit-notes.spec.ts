@@ -168,6 +168,68 @@ test.describe('Credit and debit notes', () => {
     expect(Number(saved.totalTaxableValue)).toBe(250);
   });
 
+  test('allows full goods return at reduced unit price after an approved price correction', async ({ api, uid, page }) => {
+    const inv = await createSalesInvoice(api, 3);
+    const beforeNote = await api.get(`/sales-invoice/${inv.id}/for-note`);
+    const originalUnitPrice = Number(beforeNote.items[0].unitPrice);
+
+    // 1. Create and approve a PRICE_CORRECTION credit note for all products on the invoice.
+    await cdn.gotoCreate();
+    await cdn.pickInvoice(inv.invoiceNumber);
+    await cdn.reason.selectOption({ label: 'Price Difference' });
+    await cdn.returnType('Price Correction').click();
+    await cdn.description.fill(uid('price-corr'));
+
+    const priceRow = page.getByRole('row', { name: new RegExp(inv.product.name) });
+    const correctedRateInput = priceRow.locator('input[data-corrected-rate-input]');
+    await expect(correctedRateInput).toBeVisible();
+    const invoicedNetRate = Number(await correctedRateInput.inputValue());
+    const reducedNetRate = Number((invoicedNetRate * 0.9).toFixed(2));
+    await correctedRateInput.fill(String(reducedNetRate));
+    await correctedRateInput.blur();
+
+    const pcRes = await cdn.afterResponse('POST', '/credit-debit-notes/credit', () => cdn.createNote.click());
+    expect(pcRes.status(), await pcRes.text()).toBe(201);
+    const pcNote = await pcRes.json();
+
+    await cdn.gotoView(pcNote.id);
+    await cdn.afterResponse('PATCH', `/credit-debit-notes/${pcNote.id}/approve`, () => cdn.approve.click());
+    await expect(cdn.approve).toHaveCount(0);
+
+    // Confirm the API now reports full returnable qty at the reduced effective unit price.
+    const afterPriceCorr = await api.get(`/sales-invoice/${inv.id}/for-note`);
+    const effectiveUnitPrice = Number(afterPriceCorr.items[0].unitPrice);
+    expect(effectiveUnitPrice).toBeLessThan(originalUnitPrice);
+    expect(Number(afterPriceCorr.items[0].alreadyReturnedQty)).toBe(0);
+
+    // 2. Open the credit note form again for the same invoice and do a full GOODS_RETURN.
+    await cdn.gotoCreate();
+    await cdn.pickInvoice(inv.invoiceNumber);
+    await cdn.reason.selectOption({ label: 'Customer Return' });
+    await cdn.returnType('Goods Return').click();
+    await cdn.description.fill(uid('full-return'));
+
+    await expect(page.getByText('All items already returned')).toHaveCount(0);
+    const returnRow = page.getByRole('row', { name: new RegExp(inv.product.name) });
+    await expect(returnRow).toBeVisible();
+    await expect(returnRow.getByRole('cell').nth(2)).toContainText('3');
+    expect(parseMoney(await returnRow.getByRole('cell').nth(4).innerText())).toBeCloseTo(effectiveUnitPrice, 2);
+
+    await returnRow.getByRole('checkbox').check();
+    const grRes = await cdn.afterResponse('POST', '/credit-debit-notes/credit', () => cdn.createNote.click());
+    expect(grRes.status(), await grRes.text()).toBe(201);
+    const grNote = await grRes.json();
+
+    await cdn.gotoView(grNote.id);
+    await cdn.afterResponse('PATCH', `/credit-debit-notes/${grNote.id}/approve`, () => cdn.approve.click());
+    await expect(cdn.approve).toHaveCount(0);
+
+    const savedReturn = await api.get(`/credit-debit-notes/${grNote.id}`);
+    expect(savedReturn.status).not.toBe('DRAFT');
+    expect(Number(savedReturn.items[0].adjustedQuantity)).toBe(3);
+    expect(Number(savedReturn.items[0].unitPrice)).toBeCloseTo(effectiveUnitPrice, 2);
+  });
+
   test('purchase debit note form lists its reasons', async ({ page }) => {
     await page.goto('/credit-debit-notes/purchase-debit/create');
     await expect(cdn.page.getByRole('combobox', { name: 'Reason *' }).getByRole('option')).toHaveText([
